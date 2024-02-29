@@ -1,0 +1,35 @@
+#============================================================================
+# NAME        : logging.func
+# DESCRIPTION : Function to log messages to the common logging file.
+#             : This is part of the "Digital Signage" project.
+# SYNOPSIS    : source (.) logging.func
+# AUTHOR      : Gert Bakker, Coleshill, UK
+# DATE        : October 2023
+# VERSION     : 1.0
+# USAGE       : This file is sourced-in to any script that logs messages
+# NOTES       : Sourced-in script to be included in any script that writes
+#             : messages to the common logging file.
+#             : It requires that the "signage.conf" file is sourced in first.
+#             : It sources in the dotenv file to get the DEBUG setting.
+#============================================================================
+
+#============================================================================
+# FUNCTION definition
+#
+# Logging function to write log messages to the common log file.
+#   Arg1 = Loglevel "ERROR,DEBUG,INFO"
+#   Rest = The message to write to the log.
+
+source .env             # Source in the DEBUG from the dotenv file
+
+logging() {
+    # If the dotenv DEBUG flag is false and the loglevel is DEBUG,
+    #   then do not write a log message.
+    if [[ "${DEBUG,,}" != "true" && ${1} == "DEBUG" ]]; then
+        return
+    fi
+    # Write a logging message to the log file.
+    level=${1}
+    shift
+    echo "$(date +'%b %d %H:%M:%S') ${level} - $@" >> ${PI_SIGN_LOG}
+}

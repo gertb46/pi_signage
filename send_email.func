@@ -1,0 +1,71 @@
+#============================================================================
+# NAME        : send_email.func
+# DESCRIPTION : Functions to queue and send email messages.
+#             : This is part of the "Digital Signage" project.
+# SYNOPSIS    : source (.) send_email.func
+# AUTHOR      : Gert Bakker, Coleshill, UK
+# DATE        : October 2023
+# VERSION     : 1.0
+# USAGE       : Sourced-in functions for sending an email
+# NOTES       : This file is to be sourced-in to any script that wants to email
+#             : a message. Must also have the signage.conf sourced into the
+#             : script.
+#============================================================================
+
+#============================================================================
+# CONSTANT DEFINITIONS
+# These are defined in the signage.conf sourced-in file.
+
+#============================================================================
+# FUNCTION DEFINITION
+
+# QUEUE EMAIL MESSAGE
+# Usage:
+#       queue_email  "To_adrs"  "Subject"  "Message_File" "attachfile"
+# NOTE:
+#       Ensure that the parameters are fully quoted.
+# The RFC5322 headers are formatted and written to a temporary file.
+# The message file is added to it. This is now an RFC 5322 formatted email
+# message.
+# Store the message into the queue directory where it waits for the next
+# sending of the queued email messages.
+queue_email()   {
+    # Create a unique file name for the message to be emailed.
+    QUEFILE=$(basename $(mktemp -u email_XXXX))
+    # Generate the RFC message header lines.
+    (   echo -e  "To: ${1}"
+        echo -e  "Subject: ${2}"
+        [ ${4} ] && echo -e  "Attachment: ${4}"
+        echo -e
+        cat ${3}   ) > ${QUEFILE}   # Append the email message.
+    # Move the file to the email queue directory.
+    mv  ${QUEFILE}   "${QUEUE_DIR}"
+}
+
+# QUEUE AND SEND EMAIL MESSAGE NOW
+# Usage:
+#       send_email_now  "To_adrs"  "Subject"  "Message_File" "attachfile"
+# NOTE:
+#       Ensure that the parameters are fully quoted.
+# The RFC5322 headers are formatted and written to a temporary file.
+# The message file is added to it. This is now an RFC 5322 formatted email
+# message.
+# Store the formatted file into the queue directory and start the script
+# to send the email message in background.
+send_email_now()   {
+    # Create a unique file name for the message to be emailed.
+    QUEFILE=$(basename $(mktemp -u email_XXXX))
+    # Generate the RFC message header lines.
+    (   echo -e  "To: ${1}"
+        echo -e  "Subject: ${2}"
+        [ ${4} ] && echo -e  "Attachment: ${4}"
+        echo -e
+        cat ${3}   ) > ${QUEFILE}   # Append the email message.
+    # Move the file to the email queue directory.
+    mv  ${QUEFILE}   "${QUEUE_DIR}"
+    # Run the "send_email.sh" script to send the messages in the queue
+    # now rather than wait for the script to be run by CRON.
+    ${EMAIL_SCRIPT}  &              # Email the queued message.
+}
+
+# END OF SOURCE SCRIPT.
