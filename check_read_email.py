@@ -33,7 +33,7 @@ See also:
     signage.conf -- Configuration data providing environment variables.
 
 Version:
-    1.0
+    1.1
 
 Copyright (C) 2023 Gert Bakker, Coleshill,  UK
 
@@ -117,7 +117,8 @@ LOG_ERR = ('CKEML_0: Could not connect to IMAP server: %s',
            'CKEML_1: Process messages script outcome: %s',
            'CKEML_2: Failed imap search: %s',
            'CKEML_3: Failed to login: %s',
-           'CKEML_4: INBOX not selected: %s')
+           'CKEML_4: INBOX not selected: %s',
+           'CKEML_5: Unknown sender: %s')
 
 # LOG_INFO are the information only messages
 LOG_INFO = ('CKEML: Caught signal %s',
@@ -284,8 +285,9 @@ def open_email_inbox():
         imap_open = False
         return False
 
-    sleep(2)  # See if this delay solves the login problem.
-    imap.noop()  # See if this works
+    #sleep(2)  # See if this delay solves the login problem.
+    #imap.noop()  # See if this works
+
     # Logon to the email server.
     try:
         imap.login(mail_username, mail_password)
@@ -392,7 +394,7 @@ def read_emails(messages):
 
                 # Check if sender is authorised.
                 if not check_mail_auth(from_email):
-                    logging.error(LOG_ERR[1], from_email)
+                    logging.error(LOG_ERR[5], from_email)
                     filename = FILE_PREFIX + str(mcount) + TEXT_SUFFIX
                     filepath = os.path.join(OTHR_FOLDER, filename)
                     with open(filepath, "w", encoding="utf-8") as fd:
@@ -583,7 +585,6 @@ def main():
         # Open the connection to the email server and log on.
         if not open_email_inbox():
             # There is a problem with logging on.
-            sleep(EMAIL_TIMEOUT)  # Sleep for the timeout length.
             sentry = False  # Set to false to bypass the inner loop
 
         # This is the inner loop that will check for any emails in the INBOX.
@@ -591,11 +592,18 @@ def main():
         while sentry:
             count = 0  # Set message counter to zero
 
-            # TODO: Replace code with imap.select as done in READ_EMAIL
-
-            # Check for any unseen email messages
+            # Select the INBOX folder.
             try:
-                return_code, mail_ids = imap.search(None, '(ALL)')
+                imap.select()  # connect to inbox.
+            except Exception as err:
+                logging.error(LOG_ERR[4], err)
+                imap_open = close_email_link()
+                sentry = False
+                continue
+
+            # Check for any email messages
+            try:
+                return_code, mail_ids = imap.search(None, 'ALL')
             except Exception as err:
                 logging.error(LOG_ERR[2], err)
                 return_code = None
@@ -629,6 +637,8 @@ def main():
             # Sleep for a number of seconds before checking again
             sleep(EMAIL_TIMEOUT)
         # End while sentry
+
+        sleep(EMAIL_TIMEOUT)
     # End while True
 
     # Unlikely to finish here, but keep just in case.
